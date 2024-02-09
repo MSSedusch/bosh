@@ -31,9 +31,12 @@ module Bosh::Director
         old_disk = disk_pair[:old]
 
         @logger.info("CPI resize disk enabled: #{Config.enable_cpi_resize_disk}")
+        @logger.info("CPI update disk enabled: #{Config.enable_cpi_update_disk}")
 
         if use_iaas_native_disk_resize?(old_disk, new_disk)
           resize_disk(instance_plan, new_disk, old_disk)
+        elsif Config.enable_cpi_update_disk
+          update_disk_cpi(instance_plan, new_disk, old_disk)
         else
           update_disk(instance_plan, new_disk, old_disk)
         end
@@ -227,6 +230,27 @@ module Bosh::Director
       disk_model
     end
 
+    def update_disk_cpi(instance_plan, new_disk, old_disk)
+      @logger.info("Starting IaaS native disk update #{old_disk.model.disk_cid}")
+      detach_disk(old_disk.model)
+      
+      instance_model = instance_plan.instance.model
+      new_disk_model = create_disk(instance_plan.instance, new_disk)
+
+      begin
+        cloud_update_disk(new_disk_model, new_disk.size)
+      rescue Bosh::Clouds::NotImplemented, Bosh::Clouds::NotSupported => e
+        @logger.info("IaaS native disk update not possible for #{old_disk.model.disk_cid}. Falling back to copy disk.\n#{e.message}")
+        attach_disk(old_disk.model, instance_plan.tags)
+        update_disk(instance_plan, new_disk, old_disk)
+        return
+      end
+
+      attach_disk(old_disk.model, instance_plan.tags)
+      old_disk.model.update(size: new_disk.size)
+      @logger.info("Finished IaaS native disk resize #{old_disk.model.disk_cid}")
+    end
+
     def update_disk(instance_plan, new_disk, old_disk)
       old_disk_model = old_disk&.model
       new_disk_model = nil
@@ -274,6 +298,11 @@ module Bosh::Director
     def cloud_resize_disk(old_disk_model, new_disk_size)
       cloud = cloud_for_cpi(old_disk_model.instance.active_vm.cpi)
       cloud.resize_disk(old_disk_model.disk_cid, new_disk_size)
+    end
+
+    def cloud_update_disk(new_disk_model, new_disk_size)
+      cloud = cloud_for_cpi(new_disk_model.instance.active_vm.cpi)
+      cloud.update_disk(new_disk_model.disk_cid, new_disk_size, new_disk_model.cloud_properties, "")
     end
 
     def cloud_for_cpi(cpi)

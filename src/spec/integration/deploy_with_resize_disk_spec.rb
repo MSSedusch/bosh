@@ -47,7 +47,7 @@ describe 'deploy with resize_disk', type: :integration do
       }
     }
   end
-
+#TODO: implement test case for enable_cpi_update_disk
   context 'with `enable_cpi_resize_disk` true' do
     with_reset_sandbox_before_each(enable_cpi_resize_disk: true)
 

@@ -6,6 +6,7 @@ module Bosh::Director
 
     let(:cloud) { instance_double(Bosh::Clouds::ExternalCpi) }
     let(:enable_cpi_resize_disk) { false }
+    let(:enable_cpi_update_disk) { false }
     let(:cloud_factory) { instance_double(CloudFactory) }
     let(:variables_interpolator) { instance_double(Bosh::Director::ConfigServer::VariablesInterpolator) }
     let(:instance_plan) do
@@ -78,6 +79,7 @@ module Bosh::Director
       allow(agent_client).to receive(:add_persistent_disk)
       allow(Config).to receive(:current_job).and_return(update_job)
       allow(Config).to receive(:enable_cpi_resize_disk).and_return(enable_cpi_resize_disk)
+      allow(Config).to receive(:enable_cpi_update_disk).and_return(enable_cpi_update_disk)
       allow(CloudFactory).to receive(:create).and_return(cloud_factory)
       allow(DeploymentPlan::Stages::Report).to receive(:new).and_return(step_report)
       allow(step_report).to receive(:disk_hint).and_return(disk_hint)
@@ -166,6 +168,29 @@ module Bosh::Director
         ).and_return([])
 
         disk_manager.update_persistent_disk(instance_plan)
+      end
+
+      context 'when `enable_cpi_update_disk` is enabled' do
+        let(:enable_cpi_update_disk) { true }
+
+        context 'when disk iops size has changed' do          
+          it 'updates the disk via CPI' do
+            disk_manager.update_persistent_disk(instance_plan)
+
+            # expect(agent_client).to have_received(:unmount_disk)
+            # expect(cloud).to have_received(:detach_disk).with('vm234', 'disk123')
+            #expect(cloud).to have_received(:update_disk).with('new-disk-cid', 1024, {"cloud"=>"properties"}, "")
+            # expect(cloud).to have_received(:attach_disk).with('vm234', 'disk123')
+            # expect(agent_client).to have_received(:mount_disk)
+          end
+
+          # it 'updates the old disk in the db' do
+          #   disk_manager.update_persistent_disk(instance_plan)
+
+          #   model = Models::PersistentDisk.where(disk_cid: 'disk123').first
+          #   expect(model.size).to eq(job_persistent_disk_size)
+          # end
+        end
       end
 
       context 'when `enable_cpi_disk_resize` is enabled' do

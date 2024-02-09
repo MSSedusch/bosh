@@ -288,6 +288,20 @@ module Bosh
         File.write(disk_info_file, JSON.generate(disk_info))
       end
 
+      UPDATE_DISK_SCHEMA = Membrane::SchemaParser.parse { {disk_id: String, size: Integer, cloud_properties: Hash, vm_locality: String} }
+      def update_disk(disk_id, new_size, cloud_properties, vm_locality)
+        validate_and_record_inputs(UPDATE_DISK_SCHEMA, __method__, disk_id, new_size, cloud_properties, vm_locality)
+
+        raise Bosh::Clouds::NotImplemented, 'Bosh::Clouds::NotImplemented' if commands.raise_update_disk_not_implemented
+
+        disk_info_file = disk_file(disk_id)
+        disk_info = JSON.parse(File.read(disk_info_file))
+        disk_info['size'] = new_size
+        disk_info['cloud_properties'] = cloud_properties
+        disk_info['vm_locality'] = vm_locality
+        File.write(disk_info_file, JSON.generate(disk_info))
+      end
+
       SET_VM_METADATA_SCHEMA = Membrane::SchemaParser.parse { {vm_cid: String, metadata: Hash} }
       def set_vm_metadata(vm_cid, metadata)
         raise 'Set VM metadata failed!!!' if commands.set_vm_metadata_should_fail?
