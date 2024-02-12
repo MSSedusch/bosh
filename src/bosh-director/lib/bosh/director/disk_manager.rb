@@ -236,9 +236,10 @@ module Bosh::Director
       
       instance_model = instance_plan.instance.model
       new_disk_model = create_disk(instance_plan.instance, new_disk)
+      old_disk_model = old_disk&.model
 
       begin
-        cloud_update_disk(new_disk_model, new_disk.size)
+        cloud_update_disk(old_disk_model, new_disk_model, new_disk.size)
       rescue Bosh::Clouds::NotImplemented, Bosh::Clouds::NotSupported => e
         @logger.info("IaaS native disk update not possible for #{old_disk.model.disk_cid}. Falling back to copy disk.\n#{e.message}")
         attach_disk(old_disk.model, instance_plan.tags)
@@ -300,9 +301,9 @@ module Bosh::Director
       cloud.resize_disk(old_disk_model.disk_cid, new_disk_size)
     end
 
-    def cloud_update_disk(new_disk_model, new_disk_size)
+    def cloud_update_disk(old_disk_model, new_disk_model, new_disk_size)
       cloud = cloud_for_cpi(new_disk_model.instance.active_vm.cpi)
-      cloud.update_disk(new_disk_model.disk_cid, new_disk_size, new_disk_model.cloud_properties, "")
+      cloud.update_disk(old_disk_model.disk_cid, new_disk_size, new_disk_model.cloud_properties)
     end
 
     def cloud_for_cpi(cpi)

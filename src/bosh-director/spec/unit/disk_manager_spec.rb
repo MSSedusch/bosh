@@ -67,6 +67,7 @@ module Bosh::Director
       allow(agent_client).to receive(:list_disk).and_return(['disk123'])
       allow(cloud).to receive(:create_disk).and_return('new-disk-cid')
       allow(cloud).to receive(:resize_disk)
+      allow(cloud).to receive(:update_disk)
       allow(cloud).to receive(:attach_disk)
       allow(cloud).to receive(:detach_disk)
       allow(agent_client).to receive(:stop)
@@ -177,11 +178,11 @@ module Bosh::Director
           it 'updates the disk via CPI' do
             disk_manager.update_persistent_disk(instance_plan)
 
-            # expect(agent_client).to have_received(:unmount_disk)
-            # expect(cloud).to have_received(:detach_disk).with('vm234', 'disk123')
-            #expect(cloud).to have_received(:update_disk).with('new-disk-cid', 1024, {"cloud"=>"properties"}, "")
-            # expect(cloud).to have_received(:attach_disk).with('vm234', 'disk123')
-            # expect(agent_client).to have_received(:mount_disk)
+            expect(agent_client).to have_received(:unmount_disk)
+            expect(cloud).to have_received(:detach_disk).with('vm234', 'disk123')
+            expect(cloud).to have_received(:update_disk).with('disk123', 1024, {"cloud"=>"properties"})
+            expect(cloud).to have_received(:attach_disk).with('vm234', 'disk123')
+            expect(agent_client).to have_received(:mount_disk)
           end
 
           # it 'updates the old disk in the db' do
